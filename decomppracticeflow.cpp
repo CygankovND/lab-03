@@ -32,8 +32,7 @@ void find_minmax(const vector<double>& numbers, double& min, double& max) {
 }
 
 // Расчет гистограммы
-vector<size_t> make_histogram(const vector<double>& numbers, size_t bin_count) {
-    double min, max;
+vector<size_t> make_histogram(const vector<double>& numbers, size_t bin_count, double& min, double& max) {
     find_minmax(numbers, min, max);
 
     double bin_size = (max - min) / bin_count;
@@ -50,12 +49,12 @@ vector<size_t> make_histogram(const vector<double>& numbers, size_t bin_count) {
 }
 
 // Функция для вывода текста в SVG
-void svg_text(ofstream& out, double left, double baseline, string text) {
+void svg_text(ofstream& out, double left, double baseline, const string& text) {
     out << "<text x='" << left << "' y='" << baseline << "'>" << text << "</text>\n";
 }
 
 // Функция для вывода прямоугольника в SVG
-void svg_rect(ofstream& out, double x, double y, double width, double height, string stroke = "black", string fill = "black") {
+void svg_rect(ofstream& out, double x, double y, double width, double height, const string& stroke = "black", const string& fill = "black") {
     out << "<rect x='" << x << "' y='" << y << "' width='" << width << "' height='" << height
         << "' stroke='" << stroke << "' fill='" << fill << "' />\n";
 }
@@ -72,26 +71,40 @@ void svg_end(ofstream& out) {
     out << "</svg>\n";
 }
 
+// Генерация случайного цвета
+string random_color() {
+    string colors[] = { "red", "green", "blue", "orange", "purple", "pink", "yellow" };
+    int index = rand() % 7;
+    return colors[index];
+}
+
 // Отображение гистограммы
-void show_histogram_svg(const vector<size_t>& bins) {
-    const auto IMAGE_WIDTH = 400;
-    const auto IMAGE_HEIGHT = 300;
+void show_histogram_svg(const vector<size_t>& bins, double min, double max, double bin_size) {
+    const auto IMAGE_WIDTH = 500;
+    const auto IMAGE_HEIGHT = 400;
     const auto TEXT_LEFT = 20;
     const auto TEXT_BASELINE = 20;
-    const auto TEXT_WIDTH = 50;
+    const auto TEXT_WIDTH = 60;
     const auto BIN_HEIGHT = 30;
     const auto BLOCK_WIDTH = 10;
+    const auto BIN_MARGIN = 10;
 
     ofstream out("histogram.svg");
 
     svg_begin(out, IMAGE_WIDTH, IMAGE_HEIGHT);
 
     double top = 0;
-    for (size_t bin : bins) {
-        const double bin_width = BLOCK_WIDTH * bin;
-        svg_text(out, TEXT_LEFT, top + TEXT_BASELINE, to_string(bin));
-        svg_rect(out, TEXT_WIDTH, top, bin_width, BIN_HEIGHT);
-        top += BIN_HEIGHT;
+    for (size_t i = 0; i < bins.size(); ++i) {
+        const double bin_width = BLOCK_WIDTH * bins[i];
+        svg_text(out, TEXT_LEFT, top + TEXT_BASELINE, to_string(bins[i]));
+
+        svg_rect(out, TEXT_WIDTH + 100, top, bin_width, BIN_HEIGHT, "black", random_color()); // Смещаем прямоугольники дальше вправо
+
+        double bin_label = min + i * bin_size;
+        top += TEXT_BASELINE; // Добавляем отступ для текста границ
+        svg_text(out, TEXT_LEFT, top + TEXT_BASELINE, to_string(bin_label).substr(0, 4)); // Граница столбца
+
+        top += BIN_HEIGHT + BIN_MARGIN; // Добавлен отступ между корзинами
     }
 
     svg_end(out);
@@ -109,12 +122,18 @@ int main() {
     cout << "Enter bin count: ";
     cin >> bin_count;
 
-    const auto bins = make_histogram(numbers, bin_count);
+    double min, max;
+    const auto bins = make_histogram(numbers, bin_count, min, max);
+    double bin_size = (max - min) / bin_count;
 
-    show_histogram_svg(bins);
+    show_histogram_svg(bins, min, max, bin_size);
 
     return 0;
 }
+
+
+
+
 
 
 
