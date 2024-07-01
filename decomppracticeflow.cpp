@@ -2,19 +2,23 @@
 //
 #include <iostream>
 #include <vector>
+#include <string>
+#include <fstream>
+
+using namespace std;
 
 // Ввод чисел
-std::vector<double> input_numbers(size_t count) {
-    std::vector<double> result(count);
-    std::cerr << "Enter the numbers: ";
+vector<double> input_numbers(size_t count) {
+    vector<double> result(count);
+    cout << "Enter the numbers: ";
     for (size_t i = 0; i < count; i++) {
-        std::cin >> result[i];
+        cin >> result[i];
     }
     return result;
 }
 
 // Поиск наибольшего и наименьшего значения
-void find_minmax(const std::vector<double>& numbers, double& min, double& max) {
+void find_minmax(const vector<double>& numbers, double& min, double& max) {
     min = numbers[0];
     max = numbers[0];
     for (size_t i = 1; i < numbers.size(); ++i) {
@@ -28,72 +32,90 @@ void find_minmax(const std::vector<double>& numbers, double& min, double& max) {
 }
 
 // Расчет гистограммы
-std::vector<size_t> make_histogram(const std::vector<double>& numbers, size_t bin_count) {
+vector<size_t> make_histogram(const vector<double>& numbers, size_t bin_count) {
     double min, max;
     find_minmax(numbers, min, max);
 
     double bin_size = (max - min) / bin_count;
-    std::vector<size_t> bins(bin_count, 0);
+    vector<size_t> bins(bin_count, 0);
 
     for (size_t i = 0; i < numbers.size(); ++i) {
-        size_t bin_index = std::min(static_cast<size_t>((numbers[i] - min) / bin_size), bin_count - 1);
+        size_t bin_index = (size_t)((numbers[i] - min) / bin_size);
+        if (bin_index == bin_count) {
+            bin_index--;
+        }
         bins[bin_index]++;
     }
     return bins;
 }
 
+// Функция для вывода текста в SVG
+void svg_text(ofstream& out, double left, double baseline, string text) {
+    out << "<text x='" << left << "' y='" << baseline << "'>" << text << "</text>\n";
+}
+
+// Функция для вывода прямоугольника в SVG
+void svg_rect(ofstream& out, double x, double y, double width, double height, string stroke = "black", string fill = "black") {
+    out << "<rect x='" << x << "' y='" << y << "' width='" << width << "' height='" << height
+        << "' stroke='" << stroke << "' fill='" << fill << "' />\n";
+}
+
+// Функция для начала SVG
+void svg_begin(ofstream& out, double width, double height) {
+    out << "<?xml version='1.0' encoding='UTF-8'?>\n";
+    out << "<svg width='" << width << "' height='" << height << "' viewBox='0 0 " << width << " " << height
+        << "' xmlns='http://www.w3.org/2000/svg'>\n";
+}
+
+// Функция для завершения SVG
+void svg_end(ofstream& out) {
+    out << "</svg>\n";
+}
+
 // Отображение гистограммы
-void show_histogram_text(const std::vector<size_t>& bins, double min, double max) {
-    const size_t SCREEN_WIDTH = 80;
-    const size_t LABEL_WIDTH = 3;
-    const size_t AXIS_WIDTH = 1;
-    const size_t MAX_ASTERISK = SCREEN_WIDTH - LABEL_WIDTH - AXIS_WIDTH;
+void show_histogram_svg(const vector<size_t>& bins) {
+    const auto IMAGE_WIDTH = 400;
+    const auto IMAGE_HEIGHT = 300;
+    const auto TEXT_LEFT = 20;
+    const auto TEXT_BASELINE = 20;
+    const auto TEXT_WIDTH = 50;
+    const auto BIN_HEIGHT = 30;
+    const auto BLOCK_WIDTH = 10;
 
-    size_t max_bin_count = bins[0];
-    for (size_t i = 1; i < bins.size(); ++i) {
-        if (bins[i] > max_bin_count) {
-            max_bin_count = bins[i];
-        }
+    ofstream out("histogram.svg");
+
+    svg_begin(out, IMAGE_WIDTH, IMAGE_HEIGHT);
+
+    double top = 0;
+    for (size_t bin : bins) {
+        const double bin_width = BLOCK_WIDTH * bin;
+        svg_text(out, TEXT_LEFT, top + TEXT_BASELINE, to_string(bin));
+        svg_rect(out, TEXT_WIDTH, top, bin_width, BIN_HEIGHT);
+        top += BIN_HEIGHT;
     }
 
-    double scaling_factor = (max_bin_count > MAX_ASTERISK) ? static_cast<double>(MAX_ASTERISK) / max_bin_count : 1.0;
-    double bin_size = (max - min) / bins.size();
-
-    for (size_t i = 0; i < bins.size(); ++i) {
-        std::cout << (bins[i] < 10 ? "  " : (bins[i] < 100 ? " " : "")) << bins[i] << "|";
-        size_t stars = static_cast<size_t>(bins[i] * scaling_factor);
-        for (size_t j = 0; j < stars; ++j) {
-            std::cout << "*";
-        }
-        std::cout << std::endl;
-
-        double lo = min + i * bin_size;
-        std::cout << " " << lo << std::endl;
-    }
-    double hi = min + bins.size() * bin_size;
-    std::cout << " " << hi << std::endl;
+    svg_end(out);
+    out.close();
 }
 
 int main() {
     size_t number_count;
-    std::cerr << "Enter number count: ";
-    std::cin >> number_count;
+    cout << "Enter number count: ";
+    cin >> number_count;
 
     const auto numbers = input_numbers(number_count);
 
     size_t bin_count;
-    std::cerr << "Enter bin count: ";
-    std::cin >> bin_count;
+    cout << "Enter bin count: ";
+    cin >> bin_count;
 
     const auto bins = make_histogram(numbers, bin_count);
 
-    double min, max;
-    find_minmax(numbers, min, max);
-
-    show_histogram_text(bins, min, max);
+    show_histogram_svg(bins);
 
     return 0;
 }
+
 
 
 
